@@ -1,3 +1,202 @@
-from django.shortcuts import render
+from django.urls import reverse_lazy
+from django.apps import apps
+from django.shortcuts import redirect, get_object_or_404
+from django.views.generic.base import TemplateResponseMixin, View
+from django.views.generic.list import ListView
+from django.forms.models import modelform_factory
+from django.views.generic.edit import CreateView, UpdateView, DeleteView
+from django.contrib.auth.mixins import LoginRequiredMixin, PermissionRequiredMixin
 
-# Create your views here.
+from .models import Course, Module, Content
+from .forms import ModuleFormSet
+
+
+class OwnerMixin(object):
+    def get_queryset(self):
+        qs = super().get_queryset()
+        return qs.filter(owner=self.request.user)
+
+
+class OwnerEditMixin(object):
+    def form_valid(self, form):
+        form.instance.owner = self.request.user
+        return super().form_valid(form)
+
+
+class OwnerCourseMixin(OwnerMixin,
+                       LoginRequiredMixin,
+                       PermissionRequiredMixin):
+    model = Course
+    fields = ['subject', 'title', 'slug', 'overview']
+    success_url = reverse_lazy('manage_course_list')
+
+
+class OwnerCourseEditMixin(OwnerCourseMixin, OwnerEditMixin):
+    template_name = 'courses/manage/course/form.html'
+
+
+class ManageCourseListView(OwnerCourseMixin, ListView):
+    template_name = 'courses/manage/course/list.html'
+    permission_required = 'courses.view_course'
+
+
+class CourseCreateView(OwnerCourseEditMixin, CreateView):
+    permission_required = 'courses.add_course'
+
+
+class CourseUpdateView(OwnerCourseEditMixin, UpdateView):
+    permission_required = 'courses.change_course'
+
+
+class CourseDeleteView(OwnerCourseMixin, DeleteView):
+    template_name = 'courses/manage/course/delete.html'
+    permission_required = 'courses.delete_course'
+
+
+class CourseModuleUpdateView(TemplateResponseMixin, View):
+    """
+    This view inherits from TemplateResponseMixin and View class.
+    This mixin take charge of rendering templates and returning
+    a HTTP response. It requires a template_name attribute
+    that indicates the template to be rendered and provides the
+    render_to_response method to pass it a context and render
+    the template.
+    """
+    template_name = 'courses/manage/module/formset.html'
+    course = None
+
+    def get_formset(self, data=None):
+        return ModuleFormSet(instance=self.course,
+                             data=data)
+
+    def dispatch(self, request, pk):
+        """
+        Overriding the method, so that the course
+        object for the id passed to the view is
+        used to get the course object and then
+        assign it to the instance variable course.
+        :param request:
+        :param pk:
+        :return:
+        """
+        self.course = get_object_or_404(Course,
+                                        id=pk,
+                                        owner=request.user)
+        return super().dispatch(request, pk)
+
+    def get(self, request, *args, **kwargs):
+        formset = self.get_formset()
+        return self.render_to_response({'course': self.course,
+                                        'formset': formset})
+
+    def post(self, request, *args, **kwargs):
+        formset = self.get_formset(data=request.POST)
+        if formset.is_valid():
+            formset.save()
+            return redirect('manage_course_list')
+        return self.render_to_response({'course': self.course,
+                                        'formset': formset})
+
+
+class ContentCreateUpdateView(TemplateResponseMixin, View):
+    module = None
+    model = None
+    obj = None
+    template_name = 'courses/manage/content/form.html'
+
+    def get_model(self, model_name):
+        """
+        Here we check if the given model_name is one of the
+        four content models. Then using django's apps module
+        to obtain the actual class for the given model name.
+        If the given model name is not one of the valid ones,
+        we return None.
+        :param model_name:
+        :return:
+        """
+        if model_name in ['text', 'video', 'image', 'file']:
+            return apps.get_model(app_label='courses',
+                                  model_name=model_name)
+        return None
+
+    def get_form(self, model, *args, **kwargs):
+        """
+        We build a dynamic form using the modelform_factory
+        function. As we are going to build a form for the
+        Text, Video, Image, and File models, we use the
+        exclude parameter to specify the common fields to
+        exclude from the form and let all other attributes be
+        included automatically.
+        :param model:
+        :param args:
+        :param kwargs:
+        :return:
+        """
+        Form = modelform_factory(model, exclude=['owner',
+                                                 'order',
+                                                 'created',
+                                                 'updated'])
+        return Form(*args, **kwargs)
+
+    def dispatch(self, request, module_id, model_name, id=None):
+        """
+        This method receives url parameters, it retrieves them
+        and stores them in corresponding class attributes.
+        :param request:
+        :param module_id:
+        :param model_name:
+        :param id:
+        :return:
+        """
+        self.module = get_object_or_404(Module,
+                                        id=module_id,
+                                        course__owner=request.user)
+        self.model = self.get_model(model_name)
+        if id:
+            self.obj = get_object_or_404(self.model,
+                                         id=id,
+                                         owner=request.user)
+        return super().dispatch(request, module_id, model_name, id)
+
+    def get(self, request, module_id, model_name, id=None):
+        form = self.get_form(self.model, instance=self.obj)
+        return self.render_to_response({'form': form,
+                                        'object': self.obj})
+
+    def post(self, request, module_id, model_name, id=None):
+        form = self.get_form(self.model,
+                             instance=self.obj,
+                             data=request.POST,
+                             files=request.FILES)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.owner = request.user
+            obj.save()
+            if not id:
+                # new content
+                Content.objects.create(modeule=self.module,
+                                       item=obj)
+            return redirect('module_content_list', self.module.id)
+        return self.render_to_response({'form': form,
+                                        'object': self.obj})
+
+
+class ContentDeleteView(View):
+
+    def post(self, request, id):
+        content = get_object_or_404(Content, id=id,
+                                    module__course__owner=request.user)
+        module = content.module
+        content.item.delete()
+        content.delete()
+        return redirect('module_content_list', module.id)
+
+
+class ModuleContentListView(TemplateResponseMixin, View):
+    template_name = 'courses/manage/module/content_list.html'
+
+    def get(self, request, module_id):
+        module = get_object_or_404(Module,
+                                   id=module_id,
+                                   course__owner=request.user)
+        return self.render_to_response({'module': module})
