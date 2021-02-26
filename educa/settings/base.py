@@ -12,6 +12,7 @@ https://docs.djangoproject.com/en/3.1/ref/settings/
 import os
 from pathlib import Path
 from django.core.exceptions import ImproperlyConfigured
+from django.urls import reverse_lazy
 
 
 def get_env_variable(var_name):
@@ -20,9 +21,9 @@ def get_env_variable(var_name):
     """
     try:
         return os.environ.get(var_name)
-    except KeyError:
+    except KeyError as key_not_defined:
         error_msg = f'Set the {var_name} environment variable'
-        raise ImproperlyConfigured(error_msg)
+        raise ImproperlyConfigured(error_msg) from key_not_defined
 
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -47,6 +48,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'crispy_forms',
     'courses.apps.CoursesConfig',
+    'students.apps.StudentsConfig',
 ]
 
 MIDDLEWARE = [
@@ -126,3 +128,4 @@ USE_TZ = True
 
 STATIC_URL = '/static/'
 STATICFILES_DIRS = (os.path.join(BASE_DIR, 'static'),)
+LOGIN_REDIRECT_URL = reverse_lazy('student_course_list')
