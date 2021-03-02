@@ -254,10 +254,10 @@ class CourseDetailView(DetailView):
     template_name = 'courses/course/detail.html'
 
     def get_context_data(self, **kwargs):
-        enroll_form = CourseEnrollForm(initial={'course': self.object})
-        print(f'This is the form being sent {enroll_form}')
+        form = CourseEnrollForm(initial={'course': self.object.id})
         context = {
-            'enroll_form': enroll_form
+            'form': form
         }
         context.update(kwargs)
+        print(context)
         return super().get_context_data(**context)

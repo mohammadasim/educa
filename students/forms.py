@@ -9,5 +9,4 @@ class CourseEnrollForm(forms.Form):
     A button in course_detail page will allow a student to enroll
     on a course.
     """
-    course = forms.ModelChoiceField(queryset=Course.objects.all(),
-                                    widget=forms.HiddenInput())
+    course = forms.CharField(widget=forms.HiddenInput)

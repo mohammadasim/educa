@@ -1,4 +1,4 @@
-from django.shortcuts import redirect
+from django.shortcuts import redirect, get_object_or_404
 from django.urls import reverse_lazy
 from django.views import View
 from django.views.generic.edit import CreateView
@@ -44,15 +44,10 @@ class StudentEnrollCourseView(LoginRequiredMixin, FormView):
     template_name = 'students/course/detail.html'
 
     def form_valid(self, form):
-        print('valid form received')
-        self.course = form.cleaned_data['course']
+        course_id = form.cleaned_data['course']
+        self.course = get_object_or_404(Course, id=course_id)
         self.course.students.add(self.request.user)
         return super().form_valid(form)
-
-    def form_invalid(self, form):
-        print('invalid form received')
-        print(f'This is the invalid form {form}')
-        return super().form_invalid(form)
 
     def get_success_url(self):
         return reverse_lazy('student_course_detail',
@@ -81,7 +76,7 @@ class StudentCourseDetailView(DetailView):
 
     def get_queryset(self):
         qs = super().get_queryset()
-        return qs.filter(students__in=self.request.user)
+        return qs.filter(students__in=[self.request.user])
 
     def get_context_data(self, **kwargs):
         context = super().get_context_data(**kwargs)

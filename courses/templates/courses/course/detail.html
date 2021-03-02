@@ -18,8 +18,7 @@
     {% if request.user.is_authenticated %}
         <form action="{% url 'student_enroll_course' %}" method="post">
         {% csrf_token %}
-        {{ enrollform.form_as_p }}
-            <input type="hidden" name="next" value="{{ request.path }}">
+        {{ form }}
         <input type="submit" value="Enroll Now">
         </form>
         {% else %}
