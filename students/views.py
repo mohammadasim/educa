@@ -1,8 +1,10 @@
+from django.shortcuts import redirect
 from django.urls import reverse_lazy
+from django.views import View
 from django.views.generic.edit import CreateView
 from django.views.generic.edit import FormView
 from django.views.generic.list import ListView
-from django.views.generic.detail import DetailView
+from django.views.generic.detail import DetailView, SingleObjectMixin
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.forms import UserCreationForm
 from django.contrib.auth import authenticate, login
@@ -39,11 +41,18 @@ class StudentEnrollCourseView(LoginRequiredMixin, FormView):
     """
     course = None
     form_class = CourseEnrollForm
+    template_name = 'students/course/detail.html'
 
     def form_valid(self, form):
+        print('valid form received')
         self.course = form.cleaned_data['course']
         self.course.students.add(self.request.user)
         return super().form_valid(form)
+
+    def form_invalid(self, form):
+        print('invalid form received')
+        print(f'This is the invalid form {form}')
+        return super().form_invalid(form)
 
     def get_success_url(self):
         return reverse_lazy('student_course_detail',

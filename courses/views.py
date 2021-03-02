@@ -2,6 +2,7 @@ from django.urls import reverse_lazy
 from django.apps import apps
 from django.db.models import Count
 from django.shortcuts import redirect, get_object_or_404
+from django.views.generic import DetailView
 from django.views.generic.base import TemplateResponseMixin, View
 from django.views.generic.list import ListView
 from django.forms.models import modelform_factory
@@ -156,6 +157,7 @@ class ContentCreateUpdateView(TemplateResponseMixin, View):
                                         id=module_id,
                                         course__owner=request.user)
         self.model = self.get_model(model_name)
+        print(self.model)
         if id:
             self.obj = get_object_or_404(self.model,
                                          id=id,
@@ -247,13 +249,15 @@ class CourseListView(TemplateResponseMixin, View):
         })
 
 
-class CourseDetailView(DeleteView):
+class CourseDetailView(DetailView):
     model = Course
     template_name = 'courses/course/detail.html'
 
     def get_context_data(self, **kwargs):
-        context = super().get_context_data(**kwargs)
-        context['enroll_form'] = CourseEnrollForm(
-            initial={'course': self.object}
-        )
-        return context
+        enroll_form = CourseEnrollForm(initial={'course': self.object})
+        print(f'This is the form being sent {enroll_form}')
+        context = {
+            'enroll_form': enroll_form
+        }
+        context.update(kwargs)
+        return super().get_context_data(**context)

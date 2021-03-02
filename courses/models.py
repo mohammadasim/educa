@@ -2,6 +2,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.contrib.auth.models import User
+from django.template.loader import render_to_string
 
 from .fields import OrderField
 
@@ -98,10 +99,21 @@ class ItemBase(models.Model):
     def __str__(self):
         return self.title
 
+    def render(self):
+        """
+        # FIXME: will add the explanation once I understand
+        what it does
+        :return:
+        """
+        return render_to_string(
+            f'courses/content/{self._meta.model_name}.html',
+            {'item': self}
+        )
+
 
 class Text(ItemBase):
     """Model for text content"""
-    content = models.TextField
+    content = models.TextField()
 
 
 class File(ItemBase):
@@ -116,4 +128,4 @@ class Image(ItemBase):
 
 class Video(ItemBase):
     """Model for Video content"""
-    url = models.URLField
+    url = models.URLField()

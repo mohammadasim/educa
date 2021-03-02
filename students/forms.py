@@ -10,4 +10,4 @@ class CourseEnrollForm(forms.Form):
     on a course.
     """
     course = forms.ModelChoiceField(queryset=Course.objects.all(),
-                                    widget=forms.HiddenInput)
+                                    widget=forms.HiddenInput())
