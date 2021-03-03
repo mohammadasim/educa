@@ -75,6 +75,10 @@ class StudentCourseDetailView(DetailView):
     template_name = 'students/course/detail.html'
 
     def get_queryset(self):
+        """
+        Return only courses that the student is enrolled on.
+        :return:
+        """
         qs = super().get_queryset()
         return qs.filter(students__in=[self.request.user])
 

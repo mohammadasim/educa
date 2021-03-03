@@ -101,7 +101,19 @@ class ItemBase(models.Model):
 
     def render(self):
         """
-        # FIXME: will add the explanation once I understand
+        render_to_string, loads a template like get_template()
+        and calls its render() method immediately. It takes as
+        argument template_name, context, option request, optional
+        template engine.
+        The render method itself is designed to render content.
+        so when a student selects a course, it will get a list
+        of course modules. And each module will have a number of
+        contents, these contents will be either text, image, file or video.
+        We have designed generic text, file, image and video html templates
+        that displays these specific content.
+        So when a module is selected by a student, we iterate over the modules
+        associated content and on each content we call the render method, which then
+        displays the text, file, image or video html file.
         what it does
         :return:
         """
