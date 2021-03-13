@@ -3,6 +3,7 @@ from django.apps import apps
 from django.db.models import Count
 from django.shortcuts import redirect, get_object_or_404
 from django.views.generic import DetailView
+from django.core.cache import cache
 from django.views.generic.base import TemplateResponseMixin, View
 from django.views.generic.list import ListView
 from django.forms.models import modelform_factory
@@ -233,15 +234,42 @@ class CourseListView(TemplateResponseMixin, View):
     template_name = 'courses/course/list.html'
 
     def get(self, request, subject=None):
-        subjects = Subject.objects.annotate(
-            total_courses=Count('courses')
-        )
-        courses = Course.objects.annotate(
+        subjects = cache.get('all_subjects')
+        if not subjects:
+            # each subject will now have an attribute
+            # total_courses, that we use in the template
+            subjects = Subject.objects.annotate(
+                total_courses=Count('courses')
+            )
+            # We are caching the result of the queryset
+            cache.set('all_subjects', subjects)
+        # We get all the courses in the database and annotate
+        # each one with total_modules attribute
+        all_courses = Course.objects.annotate(
             total_modules=Count('modules')
         )
         if subject:
+            # if subject is chosen we get the subject
+            # get the courses in the subject.
+            # create a special key to cache the courses
+            # and then set the cache value with courses
+            # related to the subject. Then that value is
+            # set to the value of the course variable that
+            # is sent to the template.
             subject = get_object_or_404(Subject, slug=subject)
-            courses = courses.filter(subject=subject)
+            key = f'subject_{subject.id}_courses'
+            courses = cache.get(key)
+            if not courses:
+                # we created the query and set it into a variable
+                # then use that query to filter subjects. The value
+                # of the query is then cached. Not the query itself.
+                courses = all_courses.filter(subject=subject)
+                cache.set(key, courses)
+        else:
+            courses = cache.get('all_courses')
+            if not courses:
+                courses = all_courses
+                cache.set('all_courses', courses)
         return self.render_to_response({
             'subjects': subjects,
             'subject': subject,
@@ -259,5 +287,4 @@ class CourseDetailView(DetailView):
             'form': form
         }
         context.update(kwargs)
-        print(context)
         return super().get_context_data(**context)

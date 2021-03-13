@@ -35,8 +35,6 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = get_env_variable('SECRET_KEY')
 
-
-
 # Application definition
 
 INSTALLED_APPS = [
@@ -48,6 +46,8 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'crispy_forms',
     'embed_video',
+    'memcache_status',
+    'rest_framework',
     'courses.apps.CoursesConfig',
     'students.apps.StudentsConfig',
 ]
@@ -133,3 +133,15 @@ LOGIN_REDIRECT_URL = reverse_lazy('student_course_list')
 MEDIA_URL = '/media/'
 MEDIA_ROOT = os.path.join(BASE_DIR, 'media/')
 
+CACHES = {
+    'default': {
+        'BACKEND': 'django.core.cache.backends.memcached.MemcachedCache',
+        'LOCATION': '127.0.0.1:11211',
+    }
+}
+
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.DjangoModelPermissionsOrAnonReadOnly'
+    ]
+}
